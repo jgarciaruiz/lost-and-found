@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html >
+<head>
+  <meta charset="UTF-8">
+  <title>Lost and found - Map</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/5.0.0/normalize.min.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+  <main class="pa4 black-80">
+    <h1>.:Lost Objects:.</h1>
+	<input class="b ph3 pv2 input-reset ba b--black bg-transparent grow pointer f6 dib" type="submit" value="Log out" id="logout">
+  <input class="b ph3 pv2 input-reset ba b--black bg-transparent grow pointer f6 dib" type="submit" value="My Location" id="location"><br>
+  <input type="file" accept="image/*" id="thefile" class="b ph3 pv2 input-reset ba b--black bg-transparent grow pointer f6 dib" ><br>
+  <span id="uploadbar">...</span>  
+  <div id="debug-gps"></div>
+  </main>
+
+<div id="map"></div>
+
+
+  <script src='https://www.gstatic.com/firebasejs/3.7.0/firebase.js'></script>
+  <script type="text/javascript" async defer src='https://maps.googleapis.com/maps/api/js?key=AIzaSyAD5zQ7jgViCPBKFNQiUdCj_5-BvcxU24A'></script>
+  <script type="text/javascript" async defer src='https://developers.google.com/maps/documentation/javascript/examples/markerclusterer/markerclusterer.js'></script>
+  <script async defer src="js/dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html >
+<head>
+  <meta charset="UTF-8">
+  <title>Lost and found - Sign up</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/5.0.0/normalize.min.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+  <main class="pa4 black-80">
+  <form class="measure center">
+    <fieldset id="sign_up" class="ba b--transparent ph0 mh0">
+      <legend class="f4 fw6 ph0 mh0">Sign Up</legend>
+      <div class="mt3">
+        <label class="db fw6 lh-copy f6" for="email-address">Name</label>
+        <input class="pa2 input-reset ba bg-transparent hover-bg-black hover-white w-100" type="text" name="name"  id="name">
+      </div>		
+      <div class="mt3">
+        <label class="db fw6 lh-copy f6" for="email-address">Email</label>
+        <input class="pa2 input-reset ba bg-transparent hover-bg-black hover-white w-100" type="email" name="email-address"  id="email">
+      </div>
+      <div class="mv3">
+        <label class="db fw6 lh-copy f6" for="password">Password</label>
+        <input class="b pa2 input-reset ba bg-transparent hover-bg-black hover-white w-100" type="password" name="password" id="password">
+      </div>
+    </fieldset>
+    <div class="">
+      <input class="b ph3 pv2 input-reset ba b--black bg-transparent grow pointer f6 dib" type="submit" value="Sign up" id="submit">
+      <input class="b ph3 pv2 input-reset ba b--black bg-transparent grow pointer f6 dib" type="submit" value="Twitter Connect" id="twitter">
+    </div>
+    <div class="panel panel-danger" id ="errors" style='display: none;'>       
+    </div>
+    <div class="panel panel-primary" id ="success" style='display: none;'>
+    </div>
+    <div class="lh-copy mt3">
+      <a href="index.html" class="f6 link dim black db">Sign in</a>
+    </div>
+  </form>
+</main>
+  <script src='https://www.gstatic.com/firebasejs/3.7.0/firebase.js'></script>
+
+    <script src="js/signup.js"></script>
+
+</body>
+</html>
