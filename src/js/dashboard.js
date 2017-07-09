@@ -11,9 +11,12 @@
   firebase.initializeApp(config);
 
   //check user is logged in
+  var currentUser = {};
   firebase.auth().onAuthStateChanged(function(user) {
     if (user) {
       console.log('User is signed in.');
+      currentUser = user;
+      console.log("Uploade by User ID: " + currentUser.uid + ", Provider: " + currentUser.provider);
     } else {
       console.log('No user is signed in.');
       window.location.href = 'index.html';
@@ -58,42 +61,42 @@ function snapshotToArray(snapshot) {
     return returnArr;
 };
 
-    var storedMarkers = [];
-    var address,
-        description,
-        finder,
-        finderuid,
-        found,
-        location,
-        lat,
-        lng,
-        status,
-        thumbnail,
-        timestamp;
+var storedMarkers = [];//will push here firebase markers stored data
+var address,
+    description,
+    finder,
+    finderuid,
+    found,
+    location,
+    lat,
+    lng,
+    status,
+    thumbnail,
+    timestamp;
 
-    var ref = firebase.database().ref("markers/");
-    ref.once("value")
-      .then(function(snap) {
-        var fbdata = snap.val();
-        console.log(fbdata);
+var ref = firebase.database().ref("markers/");
+ref.once("value")
+  .then(function(snap) {
+    var fbdata = snap.val();
+    console.log(fbdata);
 
 
-        var returnArr = [];
-        snap.forEach(function(snapChild) {
-            var item = snapChild.val();
-            item.key = snapChild.key;
+    var returnArr = [];
+    snap.forEach(function(snapChild) {
+        var item = snapChild.val();
+        item.key = snapChild.key;
 
-            returnArr.push(item);
-        });
-        console.log(returnArr);
+        returnArr.push(item);
+    });
+    console.log(returnArr);
 
-        //save firebase dato to array
-        snap.forEach(function(snap) {
-          var result = snap.val();
-          storedMarkers.push(result);
-        });
+    //save firebase data to array
+    snap.forEach(function(snap) {
+      var result = snap.val();
+      storedMarkers.push(result);
+    });
 
-      });
+  });
 
 
   //google maps
@@ -159,6 +162,7 @@ function snapshotToArray(snapshot) {
       console.info('lat: ', marker.getPosition().lat());
       console.info('lon: ', marker.getPosition().lng());
 
+/*      
       google.maps.event.addListener(marker, 'dragend', function () {
           map.setCenter(this.getPosition()); // Set map center to marker position
           //updatePosition(this.getPosition().lat(), this.getPosition().lng()); // update position display
@@ -173,7 +177,7 @@ function snapshotToArray(snapshot) {
           marker.setPosition(this.getCenter()); // set marker position to map center
           //updatePosition(this.getCenter().lat(), this.getCenter().lng()); // update position display
       });
-
+*/
       document.getElementById('location').addEventListener('click', function() {
         //remove main marker
         if (marker && marker.setMap) {
@@ -272,15 +276,6 @@ function snapshotToArray(snapshot) {
      // this variable sets the map bounds and zoom level according to markers position
      var bounds = new google.maps.LatLngBounds();
 
-     //jvfix to push user geolocation as initial marker
-     /*
-     var latLng = {
-      lat: location.lat,
-      lng: location.lng
-     }
-     markersData.push(latLng);//add user geolocation
-      */
-
       //parse storedMarkers
       for (i=0; i < storedMarkers.length; i++) {
         address = storedMarkers[i].address;
@@ -376,47 +371,13 @@ function snapshotToArray(snapshot) {
     uploader.addEventListener('change', function(e){
       var pic  = e.target.files[0];
       console.log("cargado pic: "+pic.name); 
-      // @codepo8 part 1
-      getThumbnail(pic);
 
       uploadPic(pic);
-
     });
   };
 
 
 
-//@codepo8 part 1
-function getThumbnail(file) {
-  if (file.type === "image/jpeg") {
-    var reader = new FileReader();
-    reader.onload = function (e) {
-      var array = new Uint8Array(e.target.result), start, end;
-      for (var i = 2; i < array.length; i++) {
-        if (array[i] === 0xFF) {
-          if (!start) {
-            if (array[i + 1] === 0xD8) {
-               start = i;
-            }
-          } else {
-            if (array[i + 1] === 0xD9) {
-              end = i;
-              break;
-            }
-          }
-        }
-      }
-      if (start && end) {
-        var urlCreator = window.URL || window.webkitURL;
-        var imageUrl = urlCreator.createObjectURL(new Blob([array.subarray(start, end)], {type:"image/jpeg"}));
-        var imgf = new Image();
-        imgf.src = imageUrl;
-        document.body.appendChild(imgf);
-      }
-    };
-    reader.readAsArrayBuffer(file.slice(0, 50000));
-  }
-}
 
   function uploadPic(pic) {
     // Upload the file to the path 'images/rivers.jpg'
@@ -425,13 +386,10 @@ function getThumbnail(file) {
     var refStorage = firebaseStorage.ref('pics/').child(pic.name);
     var uploadTask = refStorage.put(pic);
 
-    // Register three observers:
-    // 1. 'state_changed' observer, called any time the state changes
-    // 2. Error observer, called on failure
-    // 3. Completion observer, called on successful completion
+    console.log("pic.name: "+pic.name);
+
+    //state change observer
     uploadTask.on('state_changed', function(snapshot){
-      // Observe state change events 
-      // Get task progress, including the number of bytes uploaded and the total number of bytes to be uploaded
       var progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
       console.log('Subido ' + progress + '%');
       document.getElementById("uploadbar").innerHTML = progress + '%';
@@ -445,94 +403,157 @@ function getThumbnail(file) {
       var downloadURL = uploadTask.snapshot.downloadURL;
       console.log('Imagen subida a: '+downloadURL);  
       
-      //@codepo8 part 3
-      EXIF.getData(uploader.files[0], function() {
-         console.info(EXIF.pretty(this));
-      });
+
 
       //Exif
-      EXIF.getData(uploader.files[0], function() {
-
-
-        var pixelYDimension = EXIF.getTag(this, 'PixelYDimension'),
-            lat = EXIF.getTag(this, 'GPSLatitude'),
-            lon = EXIF.getTag(this, 'GPSLongitude'),
-            GPSVersionID = EXIF.getTag(this, 'GPSVersionID'),
-            GPSLatitudeRef = EXIF.getTag(this, 'GPSLatitudeRef'),
-            GPSLatitude = EXIF.getTag(this, 'GPSLatitude'),
-            GPSLongitudeRef = EXIF.getTag(this, 'GPSLongitudeRef'),
-            GPSLongitude = EXIF.getTag(this, 'GPSLongitude'),
-            GPSAltitudeRef = EXIF.getTag(this, 'GPSAltitudeRef'),
-            GPSAltitude = EXIF.getTag(this, 'GPSAltitude'),
-            GPSTimeStamp = EXIF.getTag(this, 'GPSTimeStamp'),
-            GPSSatellites = EXIF.getTag(this, 'GPSSatellites'),
-            GPSStatus = EXIF.getTag(this, 'GPSStatus'),
-            GPSMeasureMode = EXIF.getTag(this, 'GPSMeasureMode'),
-            GPSDOP = EXIF.getTag(this, 'GPSDOP'),
-            GPSSpeedRef = EXIF.getTag(this, 'GPSSpeedRef'),
-            GPSSpeed = EXIF.getTag(this, 'GPSSpeed'),
-            GPSTrackRef = EXIF.getTag(this, 'GPSTrackRef'),
-            GPSTrack = EXIF.getTag(this, 'GPSTrack'),
-            GPSImgDirectionRef = EXIF.getTag(this, 'GPSImgDirectionRef'),
-            GPSImgDirection = EXIF.getTag(this, 'GPSImgDirection'),
-            GPSMapDatum = EXIF.getTag(this, 'GPSMapDatum'),
-            GPSDestLatitudeRef = EXIF.getTag(this, 'GPSDestLatitudeRef'),
-            GPSDestLatitude = EXIF.getTag(this, 'GPSDestLatitude'),
-            GPSDestLongitudeRef = EXIF.getTag(this, 'GPSDestLongitudeRef'),
-            GPSDestLongitude = EXIF.getTag(this, 'GPSDestLongitude'),
-            GPSDestBearingRef = EXIF.getTag(this, 'GPSDestBearingRef'),
-            GPSDestBearing = EXIF.getTag(this, 'GPSDestBearing'),
-            GPSDestDistanceRef = EXIF.getTag(this, 'GPSDestDistanceRef'),
-            GPSDestDistance = EXIF.getTag(this, 'GPSDestDistance'),
-            GPSProcessingMethod = EXIF.getTag(this, 'GPSProcessingMethod'),
-            GPSAreaInformation = EXIF.getTag(this, 'GPSAreaInformation'),
-            GPSDateStamp = EXIF.getTag(this, 'GPSDateStamp'),
-            GPSDifferentia = EXIF.getTag(this, 'GPSDifferentia');
-
         var debugGPS = document.getElementById('debug-gps');
 
-        debugGPS.innerHTML += '01. GPSVersionID: '+GPSVersionID;
-        debugGPS.innerHTML += '02. GPSLatitudeRef: '+GPSLatitudeRef;
-        debugGPS.innerHTML += '03. GPSLatitude: '+GPSLatitude;
-        debugGPS.innerHTML += '04. GPSLongitudeRef: '+GPSLongitudeRef;
-        debugGPS.innerHTML += '05. GPSLongitude: '+GPSLongitude;
-        debugGPS.innerHTML += '06. GPSAltitudeRef: '+GPSAltitudeRef;
-        debugGPS.innerHTML += '07. GPSAltitude: '+GPSAltitude;
-        debugGPS.innerHTML += '08. GPSTimeStamp: '+GPSTimeStamp;
-        debugGPS.innerHTML += '09. GPSSatellites: '+GPSSatellites;
-        debugGPS.innerHTML += '10. GPSStatus: '+GPSStatus;
-        debugGPS.innerHTML += '11. GPSMeasureMode: '+GPSMeasureMode;
-        debugGPS.innerHTML += '12. GPSDOP: '+GPSDOP;
-        debugGPS.innerHTML += '13. GPSSpeedRef: '+GPSSpeedRef;
-        debugGPS.innerHTML += '14. GPSSpeed: '+GPSSpeed;
-        debugGPS.innerHTML += '15. GPSTrackRef: '+GPSTrackRef;
-        debugGPS.innerHTML += '16. GPSTrack: '+GPSTrack;
-        debugGPS.innerHTML += '17. GPSImgDirectionRef: '+GPSImgDirectionRef;
-        debugGPS.innerHTML += '18. GPSImgDirection: '+GPSImgDirection;
-        debugGPS.innerHTML += '19. GPSMapDatum: '+GPSMapDatum;
-        debugGPS.innerHTML += '20. GPSDestLatitudeRef: '+GPSDestLatitudeRef;
-        debugGPS.innerHTML += '21. GPSDestLatitude: '+GPSDestLatitude;
-        debugGPS.innerHTML += '22. GPSDestLongitudeRef: '+GPSDestLongitudeRef;
-        debugGPS.innerHTML += '23. GPSDestLongitude: '+GPSDestLongitude;
-        debugGPS.innerHTML += '24. GPSDestBearingRef: '+GPSDestBearingRef;
-        debugGPS.innerHTML += '25. GPSDestBearing: '+GPSDestBearing;
-        debugGPS.innerHTML += '26. GPSDestDistanceRef: '+GPSDestDistanceRef;
-        debugGPS.innerHTML += '27. GPSDestDistance: '+GPSDestDistance;
-        debugGPS.innerHTML += '28. GPSProcessingMethod: '+GPSProcessingMethod;
-        debugGPS.innerHTML += '29. GPSAreaInformation: '+GPSAreaInformation;
-        debugGPS.innerHTML += '30. GPSDateStamp: '+GPSDateStamp;
-        debugGPS.innerHTML += '31. GPSDifferentia: '+GPSDifferentia;
+        console.log("Uploade by User ID: " + currentUser.uid + ", Provider: " + currentUser.provider);
 
+        var fileInput = document.getElementById('thefile');
+        var fileDisplayArea = document.getElementById('debug-gps');
 
+        var file = fileInput.files[0];   
+        var lat, lon;
 
-        console.info("PixelYDimension: "+pixelYDimension);
-        //alert("latitude: "+lat);
-        //alert("longitude: "+lon);
-        
-      });
+        EXIF.getData(file, function(){
+          console.log(EXIF.pretty(file));
+           lat = EXIF.getTag(this, 'GPSLatitude');
+           lon = EXIF.getTag(this, 'GPSLongitude');
+          
+          if (typeof lat && typeof lon !== 'undefined'){
+            fileDisplayArea.innerHTML = "lat: "+lat+"<br>";
+            fileDisplayArea.innerHTML += "lon: "+lon+"<br>";
+
+            //Convert coordinates to WGS84 decimal
+            var latRef = EXIF.GPSLatitudeRef || "N";  
+            var lonRef = EXIF.GPSLongitudeRef || "W";  
+            lat = (lat[0] + lat[1]/60 + lat[2]/3600) * (latRef == "N" ? 1 : -1);  
+            lon = (lon[0] + lon[1]/60 + lon[2]/3600) * (lonRef == "W" ? -1 : 1); 
+
+           //TODO: fn that fetches username and mail from users db using currentUser.uid as main key to snap
+            var userdata = fetchUserData(currentUser.uid);//temporary hardcoded, replace with currentUser.id
+            //console.info('found username: ' + userdata);
+           //TODO: Send the coordinates to firebase and refresh map or add markert to map
+            console.info("calling: saveLostObject fn");
+            saveLostObject(pic.name,'address','description','userdata',currentUser.uid,'found',lat,lon,1,'downloadURL');
+            console.info("all ok");
+
+          }
+          else{
+            fileDisplayArea.innerHTML += "<span style='color:red'>GPS coordinates not found.</span><br>-----------------";     
+          }
+
+        });
           
     });      
   }
+
+            function fetchUserData(uid){
+              console.info("searching author... UID:"+uid);
+              /*
+              var firebaseDB = firebase.database();
+              var refDB = firebaseDB.ref('/users/'+uid);  
+
+              var username, email;
+
+              refDB.orderByChild('username').on("value", function(snapshot) {
+                  //console.log(snapshot.val());
+                  snapshot.forEach(function(data) {
+                      console.log(data.key);
+                      username = data.username;
+                      email = data.email;
+                      console.log(username);
+                  });
+              });
+              console.log(username);
+
+              return username;
+*/
+
+
+//https://stackoverflow.com/questions/14963776/get-users-by-name-property-using-firebase/14965065
+firebase.database().ref('users').child('users').orderByChild('username').equalTo('Javi').on("child_added", function(snap) {
+                  console.log(snap);
+                  snap.forEach(function(data) {
+                      console.log('email: '+data.val().email);
+                      console.log(data);
+                  });
+}, function (errorObject) {
+  console.log("The read failed: " + errorObject.code);
+});
+
+
+//investigar  crear reglas: https://stackoverflow.com/questions/43425978/how-to-write-indexon-for-nested-values-in-firebase/43427350
+
+/*
+//not working
+var usersRef = firebase.database().ref("users/"+uid);
+var username;
+firebase.database().ref("users/").orderByChild(uid).equalTo(uid).on("child_added", function(snap) {
+                  console.log(snap);
+                  snap.forEach(function(data) {
+                      console.log(data);
+                  });
+}, function (errorObject) {
+  console.log("The read failed: " + errorObject.code);
+});
+*/
+
+/*
+//devuelve todos los nombres de usuarios
+// https://www.tutorialspoint.com/firebase/firebase_queries.htm
+var usersRef = firebase.database().ref("users/");
+
+usersRef.orderByChild("username").on("child_added", function(data) {
+  console.log('username: '+data.val().username);
+}, function (errorObject) {
+  console.log("The read failed: " + errorObject.code);
+});
+*/
+
+/*
+              refDB.on("value", function(snapshot) {
+                console.log(snapshot.val());
+                return snapshot.val();
+              }, function (errorObject) {
+                console.log("The read failed: " + errorObject.code);
+              });
+*/
+            }
+
+          
+            function saveLostObject(pic,address,description,finder,finderuid,found,lat,lon,status,thumbnail) {
+              console.info("saving...(pic name:"+pic+")");
+            var firebaseDB = firebase.database();
+            var refDB = firebaseDB.ref('/markers/').push().key;  
+              console.info("creating data in "+refDB);
+
+              var postData = {
+                  address: address,
+                  description: description,
+                  finder: finder,
+                  finderuid: finderuid,
+                  found: found,
+                  location:{
+                    lat: lat,
+                    lng: lon
+                  },
+                  status: 1,
+                  thumbnail: thumbnail
+              };
+
+              // Get a key for a new Post.
+              var newPostKey = refDB;
+
+              // Write the new post's data simultaneously in the posts list and the user's post list.
+              var updates = {};
+              updates['/markers/' + newPostKey] = postData;
+              console.info("data saved");
+              return firebase.database().ref().update(updates);
+            }
+
+
 
     var debug = false;
 
@@ -1545,237 +1566,3 @@ function getThumbnail(file) {
     }
 
 }.call(this));
-
-
-  //check user is logged in
-  firebase.auth().onAuthStateChanged(function(user) {
-    if (user) {
-      console.log('User is signed in.');
-    } else {
-      console.log('No user is signed in.');
-      window.location.href = 'index.html';
-    }
-  });
-
-  //logout
-  document.getElementById('logout').onclick = function(e) {
-    e.preventDefault();
-    signOut();
-  }
-
-  function signOut() {
-     firebase.auth().signOut()
-     .then(function() {
-        console.log('Signout successful!')
-        window.location.href = 'index.html';
-     }, function(error) {
-        console.log('Signout failed!')
-     });
-  }
-
-  //google maps
-  function initMap(location) {
-      //create map container
-      var theMap = document.createElement('div');
-      theMap.id = 'map';
-      document.getElementsByTagName('body')[0].appendChild(theMap);
-
-      var dragger = document.createElement('div');
-      dragger.id = 'dragger';
-      document.getElementsByTagName('body')[0].appendChild(dragger);
-
-      console.log('initMap Started - Map loaded');
-      //var madrid = new google.maps.LatLng(40.415363, -3.707398);
-
-      var mapSettings = {
-          zoom: 18,
-          center: location,//madrid
-          mapTypeId: google.maps.MapTypeId.ROADMAP,
-          //disableDefaultUI: true
-          streetViewControl:false,
-          panControl:false,
-          mapTypeControl:false,
-          rotateControl:false,
-          overviewMapControl:false
-      };
-
-
-      var map = new google.maps.Map(document.getElementById('map'), mapSettings);
-      customizeMap(map);
-
-      console.info('zoom: ', map.getZoom());
-    
-      // Create the DIV to hold the control and call the constructor passing in this DIV
-      var geolocationDiv = document.createElement('div');
-      var geolocationControl = new GeolocationControl(geolocationDiv, map);
-      map.controls[google.maps.ControlPosition.TOP_CENTER].push(geolocationDiv);
-
-      addUserMarker(location, map);
-
-      console.log('initMap Ended');
-      
-  }
-
-  function addUserMarker(location, map) {
-      var marker = new google.maps.Marker({
-          position: location,
-          map: map,
-          draggable: true,
-          animation: google.maps.Animation.DROP
-      });
-
-      console.info('lat: ', marker.getPosition().lat());
-      console.info('lon: ', marker.getPosition().lng());
-
-      google.maps.event.addListener(marker, 'dragend', function () {
-          map.setCenter(this.getPosition()); // Set map center to marker position
-          updatePosition(this.getPosition().lat(), this.getPosition().lng()); // update position display
-      });
-
-      google.maps.event.addListener(map, 'drag', function () {
-          marker.setPosition(this.getCenter()); // set marker position to map center
-          updatePosition(this.getCenter().lat(), this.getCenter().lng()); // update position display
-     });
-
-      google.maps.event.addListener(map, 'dragend', function () {
-          marker.setPosition(this.getCenter()); // set marker position to map center
-          updatePosition(this.getCenter().lat(), this.getCenter().lng()); // update position display
-      });
-
-      document.getElementById("location").addEventListener('click', function() {
-        //remove main marker
-        if (marker && marker.setMap) {
-            marker.setMap(null);
-        }
-
-        //animate dragged location in map to user real geolocation
-        panTo(map, location.lat, location.lng);
-
-        //add marker again with user geolocation
-        var resetLatLng = new google.maps.LatLng(location.lat, location.lng);
-        marker = new google.maps.Marker({
-            position: location,
-            map: map,
-            draggable: true,
-            animation: google.maps.Animation.DROP
-        });
-        console.log("User located! Lat: "+location.lat+' Long:'+location.lng);
-
-      }, false);
-
-  }
-
-  function customizeMap(map) {
-      var styles = [{'featureType':'all','elementType':'labels.text.fill','stylers':[{'color':'#53608f'},{'saturation':'0'},{'lightness':'56'}]},{'featureType':'all','elementType':'labels.text.stroke','stylers':[{'color':'#2e2545'}]},{'featureType':'administrative','elementType':'geometry.fill','stylers':[{'color':'#2e2545'}]},{'featureType':'administrative','elementType':'geometry.stroke','stylers':[{'color':'#2e2545'},{'lightness':'-32'}]},{'featureType':'administrative.country','elementType':'labels.text.fill','stylers':[{'lightness':'-16'},{'saturation':'-8'}]},{'featureType':'administrative.province','elementType':'labels.text.fill','stylers':[{'lightness':'-16'},{'saturation':'-8'}]},{'featureType':'administrative.locality','elementType':'labels.text.fill','stylers':[{'lightness':'-32'},{'saturation':'-16'}]},{'featureType':'administrative.neighborhood','elementType':'labels.text.fill','stylers':[{'lightness':'-32'},{'saturation':'-16'}]},{'featureType':'landscape','elementType':'all','stylers':[{'color':'#2e2545'}]},{'featureType':'landscape','elementType':'geometry.stroke','stylers':[{'lightness':'-48'}]},{'featureType':'poi','elementType':'all','stylers':[{'visibility':'off'}]},{'featureType':'poi','elementType':'labels','stylers':[{'visibility':'off'}]},{'featureType':'poi.park','elementType':'geometry.fill','stylers':[{'visibility':'on'},{'color':'#326268'},{'lightness':'0'},{'saturation':'0'}]},{'featureType':'road.highway','elementType':'geometry','stylers':[{'color':'#53608f'},{'lightness':'2'},{'saturation':'0'}]},{'featureType':'road.highway','elementType':'geometry.stroke','stylers':[{'color':'#2e2545'}]},{'featureType':'road.arterial','elementType':'geometry.fill','stylers':[{'color':'#4f3f6d'},{'lightness':'0'}]},{'featureType':'road.arterial','elementType':'geometry.stroke','stylers':[{'visibility':'off'}]},{'featureType':'road.local','elementType':'geometry.fill','stylers':[{'color':'#4f3f6d'}]},{'featureType':'road.local','elementType':'geometry.stroke','stylers':[{'visibility':'off'}]},{'featureType':'transit.line','elementType':'geometry','stylers':[{'color':'#2e2545'},{'lightness':'-16'}]},{'featureType':'transit.station.airport','elementType':'geometry.fill','stylers':[{'hue':'#4800ff'},{'lightness':'-70'},{'saturation':'26'}]},{'featureType':'transit.station.bus','elementType':'all','stylers':[{'visibility':'off'}]},{'featureType':'transit.station.bus','elementType':'labels','stylers':[{'visibility':'off'}]},{'featureType':'transit.station.rail','elementType':'labels.text.fill','stylers':[{'lightness':'-16'},{'saturation':'-8'}]},{'featureType':'transit.station.rail','elementType':'labels.icon','stylers':[{'lightness':'-32'},{'weight':'1.00'}]},{'featureType':'water','elementType':'all','stylers':[{'color':'#14163a'},{'lightness':'0'}]},{'featureType':'water','elementType':'labels.text','stylers':[{'visibility':'off'}]}];
-      map.setOptions({
-          styles: styles
-      });
-  }
-
-  function GeolocationControl(controlDiv, map) {
-    // Set CSS for the control button
-    var controlUI = document.createElement('div');
-    controlUI.style.backgroundColor = '#444';
-    controlUI.style.borderStyle = 'solid';
-    controlUI.style.borderWidth = '1px';
-    controlUI.style.borderColor = 'white';
-    controlUI.style.height = '28px';
-    controlUI.style.marginTop = '5px';
-    controlUI.style.cursor = 'pointer';
-    controlUI.style.textAlign = 'center';
-    controlUI.title = 'Click to center map on your location';
-    controlDiv.appendChild(controlUI);
-
-    // Set CSS for the control text
-    var controlText = document.createElement('div');
-    controlText.style.fontFamily = 'Arial,sans-serif';
-    controlText.style.fontSize = '10px';
-    controlText.style.color = 'white';
-    controlText.style.paddingLeft = '10px';
-    controlText.style.paddingRight = '10px';
-    controlText.style.marginTop = '8px';
-    controlText.innerHTML = 'Center map on your location';
-    controlUI.appendChild(controlText);
-
-    // Setup the click event listeners to geolocate user
-    google.maps.event.addDomListener(controlUI, 'click', initGeolocation);// initGeolocation -> panTo(lat, lng);
-  }
-
-
-  function updatePosition(lat, lng) {
-      console.log('Current Lat: ' + lat.toFixed(4) + ' Current Lng: ' + lng.toFixed(4));
-  }
-
-  //document.addEventListener('DOMContentLoaded', initMap, false);
-  
-
-  var panPath = [];   // An array of points the current panning action will use
-  var panQueue = [];  // An array of subsequent panTo actions to take
-  var smoothness = 10;     // The number of steps that each panTo action will undergo - increase for smoothness
-
-  function panTo(map, newLat, newLng) {
-
-    if (panPath.length > 0) {
-      // We are already panning...queue this up for next move
-      panQueue.push([newLat, newLng]);
-    } else {
-      // Lets compute the points we'll use     
-      var curLat = map.getCenter().lat();
-      var curLng = map.getCenter().lng();
-      
-      var dLat = (newLat - curLat)/smoothness;
-      var dLng = (newLng - curLng)/smoothness;
-      
-
-      for (var i=0; i < smoothness; i++) {
-        panPath.push([curLat + dLat * i, curLng + dLng * i]);
-      }
-      panPath.push([newLat, newLng]);
-      setTimeout(function() {
-        doPan(map);
-      }, 100)
-    }
-  }
-
-  function doPan(map) {
-    var next = panPath.shift();
-    console.log('next: ',next);
-
-    if (next != null) {
-      // Continue our current pan action
-      map.panTo( new google.maps.LatLng(next[0], next[1]));
-      setTimeout(function() {
-        doPan(map);
-      }, 100)
-    } else {
-      // We are finished with this pan - check if there are any queue'd up locations to pan to 
-      var queued = panQueue.shift();
-      console.log('queued: ', queued);
-      if (queued != null) {
-        panTo(queued[0], queued[1]);
-      } else {
-        console.info('initial zoom: ', map.zoom);
-        map.setZoom(map.zoom);
-      }
-    }
-  }
-
-  function initGeolocation(){
-    console.log('Geolocation request');
-    if ('geolocation' in navigator) {
-        navigator.geolocation.getCurrentPosition(function(coord) {
-            var location = {
-                lat: coord.coords.latitude,
-                lng: coord.coords.longitude
-            }
-            initMap(location);
-        });
-    } else {
-        console.warn('Geolocation not supported');
-    }
-  }
-  
-  initGeolocation();
-
-})();
-
