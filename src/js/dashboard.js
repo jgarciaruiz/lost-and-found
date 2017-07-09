@@ -13,10 +13,22 @@
   //check user is logged in
   var currentUser = {};
   firebase.auth().onAuthStateChanged(function(user) {
-    if (user) {
+    if (user != null ) {
       console.log('User is signed in.');
+      var providerUserinfo,
+          providerUsername,
+          providerMail,
+          providerPic = '';
+
+      user.providerData.forEach(function (profile) {
+        providerUserinfo = profile.providerId | 'Regular login';
+        providerUsername = profile.displayName | 'NA, not from Twitter.';
+        providerMail = profile.email;
+        providerPic = profile.photoURL | 'NA';
+      });
+
       currentUser = user;
-      console.log("Uploade by User ID: " + currentUser.uid + ", Provider: " + currentUser.provider);
+      console.log("Firebase user ID: " + currentUser.uid + ", Login data provider: " + providerUserinfo + ", Name: "+providerUsername);
     } else {
       console.log('No user is signed in.');
       window.location.href = 'index.html';
@@ -42,24 +54,24 @@
 
 
 
-firebase.database().ref('/markers').on('value', function(snapshot) {
-  console.log("markers fetch started...");
-  //console.log(snapshotToArray(snapshot));
-  console.log("markers fetch finished...");
-});
+  firebase.database().ref('/markers').on('value', function(snapshot) {
+    console.log("markers fetch started...");
+    console.log(snapshotToArray(snapshot));
+    console.log("markers fetch finished...");
+  });
 
-function snapshotToArray(snapshot) {
-    var returnArr = [];
+  function snapshotToArray(snapshot) {
+      var returnArr = [];
 
-    snapshot.forEach(function(childSnapshot) {
-        var item = childSnapshot.val();
-        item.key = childSnapshot.key;
+      snapshot.forEach(function(childSnapshot) {
+          var item = childSnapshot.val();
+          item.key = childSnapshot.key;
 
-        returnArr.push(item);
-    });
+          returnArr.push(item);
+      });
 
-    return returnArr;
-};
+      return returnArr;
+  };
 
 var storedMarkers = [];//will push here firebase markers stored data
 var address,
@@ -74,33 +86,34 @@ var address,
     thumbnail,
     timestamp;
 
-var ref = firebase.database().ref("markers/");
-ref.once("value")
-  .then(function(snap) {
-    var fbdata = snap.val();
-    console.log(fbdata);
+  var ref = firebase.database().ref("markers/");
+  ref.once("value")
+    .then(function(snap) {
+      var fbdata = snap.val();
+      console.log(fbdata);
 
 
-    var returnArr = [];
-    snap.forEach(function(snapChild) {
-        var item = snapChild.val();
-        item.key = snapChild.key;
+      var returnArr = [];
+      snap.forEach(function(snapChild) {
+          var item = snapChild.val();
+          item.key = snapChild.key;
 
-        returnArr.push(item);
+          returnArr.push(item);
+      });
+      console.log(returnArr);
+
+      //save firebase data to array
+      snap.forEach(function(snap) {
+        var result = snap.val();
+        storedMarkers.push(result);
+      });
+
     });
-    console.log(returnArr);
-
-    //save firebase data to array
-    snap.forEach(function(snap) {
-      var result = snap.val();
-      storedMarkers.push(result);
-    });
-
-  });
 
 
   //google maps
   function initMap(location) {
+
       //create map container
       var theMap = document.createElement('div');
       theMap.id = 'map';
@@ -151,6 +164,8 @@ ref.once("value")
   }
 
   function addUserMarker(location, map) {
+    console.log("---location---")
+    console.log(location);
       var marker = new google.maps.Marker({
           position: location,
           map: map,
@@ -272,12 +287,17 @@ ref.once("value")
   // This function will iterate over markersData array
   // creating markers with createMarker function
   function displayMarkers(location, map){
-        
+     console.log("creating markers...");
+
+     console.log('-- storedMarkers --');
+     console.log(storedMarkers);
+
      // this variable sets the map bounds and zoom level according to markers position
      var bounds = new google.maps.LatLngBounds();
 
-      //parse storedMarkers
       for (i=0; i < storedMarkers.length; i++) {
+        console.log(i);
+
         address = storedMarkers[i].address;
         description = storedMarkers[i].description;
         finder = storedMarkers[i].finder;
@@ -290,8 +310,8 @@ ref.once("value")
         thumbnail = storedMarkers[i].thumbnail;
         timestamp = storedMarkers[i].timestamp;
 
-        var latlng = new google.maps.LatLng(lat,lng);
-
+        console.info('--map--');        
+        console.info(map);
         console.info('address: ',address);        
         console.info('description: ',description);        
         console.info('finder: ',finder);        
@@ -304,20 +324,23 @@ ref.once("value")
         console.info('status: ',status);        
         console.info('timestamp: ',timestamp);
 
+        console.log("creating markers from firebase records init");
+
         createMarker(map, latlng, found, thumbnail, description, finder);
 
-        // Marker’s Lat. and Lng. values are added to bounds variable
+        // Markers Lat. and Lng. values are added to bounds variable
         bounds.extend(latlng); 
      }
 
      // Finally the bounds variable is used to set the map bounds
-     // with API’s fitBounds() function
+     // with APIs fitBounds() function
      map.fitBounds(bounds);
   }
 
 
   // This function creates each marker and sets their Info Window content
   function createMarker(map, latlng, found, thumbnail, description, finder){
+     console.log("creating markers from firebase records");
      var marker = new google.maps.Marker({
         map: map,
         position: latlng,
@@ -408,7 +431,7 @@ ref.once("value")
       //Exif
         var debugGPS = document.getElementById('debug-gps');
 
-        console.log("Uploade by User ID: " + currentUser.uid + ", Provider: " + currentUser.provider);
+        console.log("Uploaded by User ID: " + currentUser.uid + ", Provider: " + currentUser.provider);
 
         var fileInput = document.getElementById('thefile');
         var fileDisplayArea = document.getElementById('debug-gps');
@@ -432,8 +455,9 @@ ref.once("value")
             lon = (lon[0] + lon[1]/60 + lon[2]/3600) * (lonRef == "W" ? -1 : 1); 
 
            //TODO: fn that fetches username and mail from users db using currentUser.uid as main key to snap
-            var userdata = fetchUserData(currentUser.uid);//temporary hardcoded, replace with currentUser.id
+//            var userdata = fetchUserData(currentUser.uid);//temporary hardcoded, replace with currentUser.id
             //console.info('found username: ' + userdata);
+           
            //TODO: Send the coordinates to firebase and refresh map or add markert to map
             console.info("calling: saveLostObject fn");
             saveLostObject(pic.name,'address','description','userdata',currentUser.uid,'found',lat,lon,1,'downloadURL');
@@ -451,75 +475,7 @@ ref.once("value")
 
             function fetchUserData(uid){
               console.info("searching author... UID:"+uid);
-              /*
-              var firebaseDB = firebase.database();
-              var refDB = firebaseDB.ref('/users/'+uid);  
 
-              var username, email;
-
-              refDB.orderByChild('username').on("value", function(snapshot) {
-                  //console.log(snapshot.val());
-                  snapshot.forEach(function(data) {
-                      console.log(data.key);
-                      username = data.username;
-                      email = data.email;
-                      console.log(username);
-                  });
-              });
-              console.log(username);
-
-              return username;
-*/
-
-
-//https://stackoverflow.com/questions/14963776/get-users-by-name-property-using-firebase/14965065
-firebase.database().ref('users').child('users').orderByChild('username').equalTo('Javi').on("child_added", function(snap) {
-                  console.log(snap);
-                  snap.forEach(function(data) {
-                      console.log('email: '+data.val().email);
-                      console.log(data);
-                  });
-}, function (errorObject) {
-  console.log("The read failed: " + errorObject.code);
-});
-
-
-//investigar  crear reglas: https://stackoverflow.com/questions/43425978/how-to-write-indexon-for-nested-values-in-firebase/43427350
-
-/*
-//not working
-var usersRef = firebase.database().ref("users/"+uid);
-var username;
-firebase.database().ref("users/").orderByChild(uid).equalTo(uid).on("child_added", function(snap) {
-                  console.log(snap);
-                  snap.forEach(function(data) {
-                      console.log(data);
-                  });
-}, function (errorObject) {
-  console.log("The read failed: " + errorObject.code);
-});
-*/
-
-/*
-//devuelve todos los nombres de usuarios
-// https://www.tutorialspoint.com/firebase/firebase_queries.htm
-var usersRef = firebase.database().ref("users/");
-
-usersRef.orderByChild("username").on("child_added", function(data) {
-  console.log('username: '+data.val().username);
-}, function (errorObject) {
-  console.log("The read failed: " + errorObject.code);
-});
-*/
-
-/*
-              refDB.on("value", function(snapshot) {
-                console.log(snapshot.val());
-                return snapshot.val();
-              }, function (errorObject) {
-                console.log("The read failed: " + errorObject.code);
-              });
-*/
             }
 
           
